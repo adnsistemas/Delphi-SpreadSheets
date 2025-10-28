@@ -395,6 +395,7 @@ TYPE
                 FUNCTION ooCreateValue (strOoName: string; vOoData: variant): variant; //
                 //Aux functions
                 FUNCTION ValidateSheetName (strName: string): string;
+                FUNCTION GetActiveSheetIndex: integer;
               PUBLIC
                 m_vDeskTop: variant; //OpenOffice desktop reference.
                 //Object internals...
@@ -430,6 +431,7 @@ TYPE
                 PROPERTY CountSheets: integer read GetCountSheets;
                 PROPERTY ActiveSheet: variant read m_vActiveSheet write m_vActiveSheet;
                 PROPERTY ActiveSheetName: string read GetActiveSheetName write SetActiveSheetName;
+                PROPERTY ActiveSheetIndex: integer read GetActiveSheetIndex;
                 PROPERTY FirstAddedSheet: boolean read m_bFirstAddedSheet; //
                 property LastRow: integer read GetLastRow;
                 property LastCol: integer read GetLastCol;
@@ -1184,6 +1186,24 @@ FUNCTION THojaCalc.ActivateSheetByName (strSheetName: string; bCaseSensitive: bo
   END {THojaCalc.ActivateSheetByName};
 
 
+function THojaCalc.GetActiveSheetIndex: integer;
+  { 1 based index, as Excel does }
+  var
+    ra:Variant;
+  BEGIN
+    IF DocLoaded THEN
+      BEGIN
+        IF IsExcel THEN begin
+          result := m_vActiveSheet.Index;
+        end ELSE begin //IF IsOpenOffice THEN
+          ra := m_vActiveSheet.getRangeAddress;
+          result := ra.Sheet + 1; // 0 based
+        end;
+      END {IF}
+    ELSE
+      result := 0;
+  END {THojaCalc.GetActiveSheetIndex};
+
 FUNCTION THojaCalc.GetActiveSheetName: string;
 
 { Name of the active sheet? }
@@ -1341,7 +1361,8 @@ PROCEDURE THojaCalc.AddNewSheet (strNewName: string; bRemoveDummySheets: boolean
     ELSE //IF IsOpenOffice THEN
       BEGIN
         vOoSheets := m_vDocument.getSheets;
-        vOoSheets.insertNewByName(strNewName, 1);
+        { same behaviour of Excel }
+        vOoSheets.insertNewByName(strNewName, ActiveSheetIndex);
         IF bRemoveDummySheets AND m_bFirstAddedSheet THEN
           RemoveAllSheetsExcept(strNewName, true); //
       //Redefine active sheet to this new one
